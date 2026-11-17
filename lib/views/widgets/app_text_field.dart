@@ -18,6 +18,8 @@ class AppTextField extends StatelessWidget {
     this.prefixText,
     this.suffixText,
     this.prefix,
+    this.suffix,
+    this.obscureText = false,
     this.autofocus = false,
     this.capitalization = TextCapitalization.none,
     this.onChanged,
@@ -39,6 +41,8 @@ class AppTextField extends StatelessWidget {
   final String? prefixText;
   final String? suffixText;
   final Widget? prefix;
+  final Widget? suffix;
+  final bool obscureText;
   final bool autofocus;
   final TextCapitalization capitalization;
   final ValueChanged<String>? onChanged;
@@ -68,8 +72,9 @@ class AppTextField extends StatelessWidget {
       validator: validator,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      maxLines: maxLines,
+      maxLines: obscureText ? 1 : maxLines,
       maxLength: maxLength,
+      obscureText: obscureText,
       autofocus: autofocus,
       textCapitalization: capitalization,
       onChanged: onChanged,
@@ -83,6 +88,7 @@ class AppTextField extends StatelessWidget {
         prefixText: prefixText,
         suffixText: suffixText,
         prefixIcon: prefix,
+        suffixIcon: suffix,
         counterText: '',
         // Auth style: label pinned on a dark outline.
         floatingLabelBehavior: emphasized ? FloatingLabelBehavior.always : null,

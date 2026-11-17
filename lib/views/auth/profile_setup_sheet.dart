@@ -15,19 +15,19 @@ class ProfileSetupSheet extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return AppSheetScaffold(
-      title: 'Finish signing up',
+      title: 'Almost done',
       expand: true,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Stores use these to deliver your order.',
+            'Just your name and a mobile number for delivery.',
             style: TextStyle(color: MyColors.textSecondary, fontSize: 13),
           ),
           20.sbh,
           AppTextField(
             controller: controller.nameCtrl,
-            label: 'Full name',
+            label: 'Name',
             emphasized: true,
             capitalization: TextCapitalization.words,
             autofillHints: const [AutofillHints.name],
@@ -35,7 +35,7 @@ class ProfileSetupSheet extends GetView<AuthController> {
           16.sbh,
           AppTextField(
             controller: controller.phoneCtrl,
-            label: 'Mobile number',
+            label: 'Mobile',
             hint: '0300 1234567',
             emphasized: true,
             keyboardType: TextInputType.phone,

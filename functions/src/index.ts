@@ -173,4 +173,4 @@ export const onOrderUpdated = onDocumentUpdated(
   }
 );
 
-export { sendEmailOtp, verifyEmailOtp } from "./emailOtp";
+// Email OTP removed — app uses Firebase Email/Password + Google Sign-In.

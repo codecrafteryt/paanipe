@@ -13,7 +13,6 @@ import '../utils/helpers/app_messages.dart';
 import '../utils/helpers/formatters.dart';
 import '../utils/helpers/validators.dart';
 import '../views/auth/login_sheet.dart';
-import '../views/auth/otp_sheet.dart';
 import '../views/auth/profile_setup_sheet.dart';
 import '../views/widgets/app_loader.dart';
 import '../views/widgets/app_sheet/app_bottom_sheet.dart';
@@ -23,7 +22,7 @@ enum AppMode { customer, seller }
 
 enum SessionState { loading, guest, needsProfile, ready }
 
-/// Session (Firebase Auth + users doc), email-code / Google sign-in, profile, mode.
+/// Session (Firebase Auth + users doc), email/password + Google, slim profile, mode.
 class AuthController extends GetxController {
   AuthController({required this.authRepo, required this.prefs});
 
@@ -34,19 +33,18 @@ class AuthController extends GetxController {
   final state = SessionState.loading.obs;
   late final mode = AppMode.values.byName(prefs.getString(Constants.appMode) ?? 'customer').obs;
 
+  /// `true` = create account, `false` = sign in.
+  final isRegisterMode = false.obs;
+  final obscurePassword = true.obs;
+
   final emailCtrl = TextEditingController();
-  final codeCtrl = TextEditingController();
+  final passwordCtrl = TextEditingController();
   final nameCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
-  final isSending = false.obs;
-  final isVerifying = false.obs;
+  final isAuthLoading = false.obs;
   final isGoogleLoading = false.obs;
   final isSaving = false.obs;
-  final secondsLeft = 0.obs;
 
-  /// Email the current code was sent to.
-  String email = '';
-  Timer? _timer;
   StreamSubscription<AppUser?>? _profileSub;
   final _settled = Completer<void>();
 
@@ -68,16 +66,15 @@ class AuthController extends GetxController {
     profile.value = null;
     if (user == null) return _setState(SessionState.guest);
     try {
-      await authRepo.reloadUser(); // drops cached sessions of disabled / deleted accounts
+      await authRepo.reloadUser();
     } on FirebaseAuthException catch (e) {
       if (const {'user-disabled', 'user-not-found', 'user-token-expired'}.contains(e.code)) {
         return authRepo.signOut();
       }
-      // Offline etc.: keep the cached session; Firestore rules still enforce access.
     }
     _profileSub = authRepo.userStream(user.uid).listen((p) {
       if (p == null) {
-        authRepo.createUser(user); // first sign-in; the next snapshot carries the doc
+        authRepo.createUser(user);
         return;
       }
       profile.value = p;
@@ -91,7 +88,6 @@ class AuthController extends GetxController {
     if (!_settled.isCompleted) _settled.complete();
   }
 
-  /// Waits until a fresh sign-in has a resolved profile state.
   Future<void> _awaitSignedIn() async {
     if (state.value == SessionState.ready || state.value == SessionState.needsProfile) return;
     await state.stream
@@ -99,11 +95,11 @@ class AuthController extends GetxController {
         .timeout(const Duration(seconds: 20));
   }
 
-  // ── Guest gate: login sheet → code sheet → finish-profile sheet ──────────────
+  // ── Guest gate: login sheet → finish-profile sheet ─────────────────────────
   Future<bool> requireLogin() async {
     if (isLoggedIn) return true;
-    if (state.value != SessionState.needsProfile && await _sheet<bool>(const LoginSheet()) == true) {
-      await _sheet<void>(const OtpSheet());
+    if (state.value != SessionState.needsProfile) {
+      await _sheet<bool>(const LoginSheet());
     }
     if (state.value == SessionState.needsProfile) {
       nameCtrl.text = profile.value?.name ?? '';
@@ -113,7 +109,6 @@ class AuthController extends GetxController {
     return isLoggedIn;
   }
 
-  /// Auth sheets run from just under the status bar to the bottom of the screen.
   Future<T?> _sheet<T>(Widget child) async {
     final context = Get.context;
     if (context == null) return null;
@@ -127,52 +122,32 @@ class AuthController extends GetxController {
     );
   }
 
-  /// Login sheet "Continue": email a code, then the sheet closes into the code sheet.
-  Future<void> sendCode() async {
-    final error = Validators.email(emailCtrl.text);
-    if (error != null) return showError(error);
-    if (await _send(emailCtrl.text.trim().toLowerCase())) Get.back(result: true);
-  }
+  void toggleAuthMode() => isRegisterMode.toggle();
 
-  Future<void> resendCode() async {
-    if (secondsLeft.value == 0 && await _send(email)) showOk('A new code is on its way.');
-  }
+  void toggleObscurePassword() => obscurePassword.toggle();
 
-  Future<bool> _send(String to) async {
-    isSending.value = true;
+  /// Login / register with email + password, then close into profile if needed.
+  Future<void> submitEmailAuth() async {
+    final emailError = Validators.email(emailCtrl.text);
+    if (emailError != null) return showError(emailError);
+    final passwordError = Validators.password(passwordCtrl.text);
+    if (passwordError != null) return showError(passwordError);
+
+    if (isAuthLoading.value) return;
+    isAuthLoading.value = true;
     try {
-      await authRepo.sendEmailCode(to);
-      email = to;
-      codeCtrl.clear();
-      _startTimer();
-      return true;
-    } catch (e) {
-      showError(AuthRepo.messageFor(e));
-      return false;
-    } finally {
-      isSending.value = false;
-    }
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    secondsLeft.value = Constants.otpResendSeconds;
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (--secondsLeft.value <= 0) t.cancel();
-    });
-  }
-
-  Future<void> verifyCode() async {
-    if (codeCtrl.text.length != Constants.otpLength || isVerifying.value) return;
-    isVerifying.value = true;
-    try {
-      await authRepo.verifyEmailCode(email, codeCtrl.text);
+      final email = emailCtrl.text.trim().toLowerCase();
+      final password = passwordCtrl.text;
+      if (isRegisterMode.value) {
+        await authRepo.registerWithEmailPassword(email: email, password: password);
+      } else {
+        await authRepo.signInWithEmailPassword(email: email, password: password);
+      }
       await _finishSignIn();
     } catch (e) {
-      codeCtrl.clear();
       showError(AuthRepo.messageFor(e));
     } finally {
-      isVerifying.value = false;
+      isAuthLoading.value = false;
     }
   }
 
@@ -188,21 +163,23 @@ class AuthController extends GetxController {
     }
   }
 
-  /// Full-screen loader until the account resolves, then close the auth sheet.
   Future<void> _finishSignIn() async {
     AppLoader.show();
     try {
       await _awaitSignedIn();
     } on TimeoutException {
       await authRepo.signOut();
-      throw FirebaseAuthException(code: 'timeout', message: 'Could not load your account. Please try again.');
+      throw FirebaseAuthException(
+        code: 'timeout',
+        message: 'Could not load your account. Please try again.',
+      );
     } finally {
       AppLoader.hide();
     }
-    Get.back<void>();
+    Get.back(result: true);
   }
 
-  // ── Profile ──────────────────────────────────────────────────────────────────
+  // ── Profile (name + delivery mobile only) ──────────────────────────────────
   Future<void> saveProfile() async {
     final id = uid;
     final name = nameCtrl.text.trim();
@@ -236,7 +213,6 @@ class AuthController extends GetxController {
     Get.until((r) => r.isFirst);
   }
 
-  /// Ends the session everywhere on this device: push token, Google, Firebase, local state.
   Future<void> signOut() async {
     final id = uid;
     if (id == null) return;
@@ -245,14 +221,14 @@ class AuthController extends GetxController {
     await switchMode(AppMode.customer);
     await authRepo.signOut();
     Get.find<CartController>().clear();
-    for (final c in [emailCtrl, codeCtrl, nameCtrl, phoneCtrl]) {
+    for (final c in [emailCtrl, passwordCtrl, nameCtrl, phoneCtrl]) {
       c.clear();
     }
+    isRegisterMode.value = false;
   }
 
   @override
   void onClose() {
-    _timer?.cancel();
     _profileSub?.cancel();
     super.onClose();
   }

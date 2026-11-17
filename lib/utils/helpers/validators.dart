@@ -7,10 +7,17 @@ class Validators {
 
   static final _email = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]{2,}$');
 
-  /// Same rule as the sendEmailOtp Cloud Function.
   static String? email(String? v) {
     final e = (v ?? '').trim();
     return e.length > 254 || !_email.hasMatch(e) ? 'Enter a valid email address' : null;
+  }
+
+  /// Firebase Email/Password requires at least 6 characters.
+  static String? password(String? v) {
+    final p = v ?? '';
+    if (p.isEmpty) return 'Please enter your password';
+    if (p.length < 6) return 'Password must be at least 6 characters';
+    return null;
   }
 
   static String? required(String? v, [String message = 'Required']) =>

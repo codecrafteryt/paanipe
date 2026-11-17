@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "pannipe-app"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

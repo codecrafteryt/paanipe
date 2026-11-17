@@ -38,7 +38,7 @@ Customers browse nearby water stores as guests, set a delivery pin on the map, a
 | **Customer** (default) | Anyone with the app | Browse stores, view products, set delivery location (device prefs), fill cart | Place order, open *Orders*, switch to seller |
 | **Seller** | Store owner | — | Create/edit store & products, accept/reject/progress orders |
 
-**Auth options:** email one-time code (custom token via Cloud Functions + SMTP) or Google Sign-In. After first login, profile asks for **name** + **delivery mobile**.
+**Auth options:** Firebase **Email/Password** or **Google Sign-In**. After first login, profile asks only for **name** + **delivery mobile** (no heavy KYC).
 
 ```mermaid
 flowchart LR
@@ -86,7 +86,7 @@ flowchart LR
 | Backend | Firebase (Auth, Firestore, Storage, FCM, Functions) | No custom Node API for MVP |
 | Maps | Google Maps Flutter SDK | Delivery pin + nearby stores |
 | Config | `flutter_dotenv` + `.env` | No hardcoded API keys in Dart |
-| Functions | TypeScript (`functions/src`) | OTP + order integrity + FCM |
+| Functions | TypeScript (`functions/src`) | Order integrity + FCM (optional until Blaze) |
 | Region | `asia-south1` | Pakistan / South Asia latency |
 
 ---
@@ -168,7 +168,6 @@ flowchart TB
     ISP["ios/Runner/Secrets.plist"]
     GSJ["google-services.json"]
     GSI["GoogleService-Info.plist"]
-    SMTP["Firebase secrets SMTP_USER / SMTP_PASS"]
   end
 
   subgraph InGit["Safe templates only"]
@@ -188,7 +187,6 @@ flowchart TB
   ASP --> Manifest["AndroidManifest ${MAPS_API_KEY}"]
   ISP --> AppDelegate["GMSServices.provideAPIKey"]
   Dart --> FirebaseOpts["firebase_options.dart"]
-  SMTP --> Functions["emailOtp.ts"]
 ```
 
 | Asset | How it stays private |
@@ -199,7 +197,7 @@ flowchart TB
 | Firebase Android config | `google-services.json` git-ignored |
 | Firebase iOS config | `GoogleService-Info.plist` git-ignored |
 | Keystores / PEM / service accounts | Broad gitignore patterns |
-| SMTP | Functions secrets only — never in the app |
+| Auth passwords | Firebase Auth only — never written to Firestore |
 
 Committed templates: `.env.example`, `android/secrets.properties.example`, `android/app/google-services.json.example`, `ios/Runner/Secrets.plist.example`, `functions/.env.example`.
 
@@ -225,10 +223,9 @@ sequenceDiagram
   App->>FS: Read public stores (+ products)
   U->>App: Add items → Cart
   U->>App: Place COD order
-  App->>Auth: requireLogin (email OTP or Google)
-  opt Email OTP
-    App->>CF: sendEmailOtp / verifyEmailOtp
-    CF->>Auth: custom token
+  App->>Auth: requireLogin (email/password or Google)
+  opt Email / password or Google
+    App->>Auth: signIn / createUser / Google credential
   end
   App->>FS: Create orders/{id} status=placed
   FS->>CF: onOrderCreated
@@ -259,16 +256,15 @@ stateDiagram-v2
 flowchart TD
   Start[Need login] --> Choice{Method}
   Choice -->|Google| GSI[Google Sign-In SDK]
-  GSI --> FA[Firebase Auth credential]
-  Choice -->|Email OTP| Send[sendEmailOtp callable]
-  Send --> Mail[SMTP send 6-digit code]
-  Mail --> Verify[verifyEmailOtp callable]
-  Verify --> Token[Custom token]
-  Token --> FA
+  GSI --> FA[Firebase Auth]
+  Choice -->|Email password| EP[signIn / createUserWithEmailAndPassword]
+  EP --> FA
   FA --> Profile{name + phone set?}
-  Profile -->|no| Complete[Complete profile UI]
+  Profile -->|no| Complete[Name + mobile only]
   Profile -->|yes| App[Customer or Seller shell]
 ```
+
+**Package / bundle ID:** `com.pannipe.app` (Android `applicationId` + iOS `PRODUCT_BUNDLE_IDENTIFIER`).
 
 ---
 
@@ -277,7 +273,6 @@ flowchart TD
 | Path | Contents | Client access |
 |------|----------|---------------|
 | `users/{uid}` | email, name, phone, fcmTokens[] | Owner only |
-| `emailOtps/{hash}` | OTP hashes (server) | **No client access** |
 | `stores/{ownerUid}` | name, phone, description, imageUrl, location, address, freeWithinKm, chargePerKm, isOpen, ownerId | Public read; owner write |
 | `stores/{ownerUid}/products/{id}` | name, size, price, imageUrl, inStock | Public read; owner write |
 | `orders/{id}` | customer + store snapshot, items[], subtotal, deliveryFee, distanceKm, total, paymentMethod `cod`, deliveryLocation, status, statusTimes | Customer or seller of that order |
@@ -343,7 +338,6 @@ flowchart TB
 
   subgraph Server["Cloud Functions Admin SDK"]
     Reprice[Re-price + fee check]
-    OTP[Email OTP + custom tokens]
     Push[FCM fan-out]
   end
 
@@ -356,7 +350,7 @@ flowchart TB
 
 - **Firestore rules** (`firestore.rules`): public catalogue; private users; order create constrained; status transitions validated for customer vs seller.
 - **Storage rules** (`storage.rules`): public image read; only store owner uploads; size capped (~5 MB).
-- **Client cannot** mint custom tokens or write `emailOtps` — that stays in Functions.
+- **Auth** is Email/Password + Google only; profile docs stay minimal (`email`, `name`, `phone`, `fcmTokens`).
 
 > **Note:** Firebase *client* API keys are not server secrets, but we still keep them out of git and restrict them in Google Cloud (Android package + SHA-1/256, iOS bundle ID, Maps API restrictions). **Rotate any key that was ever committed historically.**
 
@@ -417,7 +411,6 @@ Then mirror Android/iOS API values into `.env` (source of truth for Dart `Defaul
 |--------|:------:|:----------------------------:|:-------------------:|:-----------------:|
 | `GOOGLE_MAPS_API_KEY` | ✅ | ✅ as `MAPS_API_KEY` | ✅ | — |
 | `FIREBASE_*` | ✅ | via `google-services.json` | via plist | — |
-| `SMTP_USER` / `SMTP_PASS` | — | — | — | ✅ |
 | Stripe / Yandex (future) | ✅ optional | — | — | — |
 
 ---
@@ -441,8 +434,6 @@ lib/
 
 functions/src/
   index.ts                        onOrderCreated, onOrderUpdated
-  emailOtp.ts                     send / verify email OTP
-
 firestore.rules / storage.rules / firestore.indexes.json
 coding_principle/                 engineering rules for this repo
 SECURITY.md                       public-repo secret policy
@@ -481,22 +472,18 @@ Release Android builds: add the **release** keystore SHA-1/SHA-256 to the Fireba
 Project id used in this app: **`pannipe-app`** (override via `.env` if you fork).
 
 1. **Firestore** — Create database (`asia-south1`). Deploy: `firebase deploy --only firestore`.
-2. **Authentication** — Enable **Google**. Email OTP uses custom tokens (no Email/Password provider required). Re-run `flutterfire configure` so Android `google-services.json` gets the web client ID Google Sign-In needs.
-3. **Blaze plan** — Required for Cloud Functions + default Storage bucket (free tier usually covers MVP traffic).
+2. **Authentication** — Enable **Email/Password** and **Google**. Apps use package/bundle `com.pannipe.app`. Re-run `flutterfire configure` (or download `google-services.json`) so Android gets the OAuth web client ID Google Sign-In needs.
+3. **Blaze plan** — Required for Cloud Functions (order re-price + FCM). Auth + Firestore work on Spark; Storage may need Blaze depending on bucket setup.
 4. **Storage** — Same region; `firebase deploy --only storage`.
-5. **Functions / SMTP**
-   - `firebase functions:secrets:set SMTP_USER`
-   - `firebase functions:secrets:set SMTP_PASS`
-   - Optional params: `SMTP_HOST` (default `smtp.gmail.com`), `SMTP_PORT` (465), `MAIL_FROM`
-   - Grant the default compute SA **Service Account Token Creator** (needed for custom tokens / `signBlob`).
+5. **Functions** (optional until you need server re-price / push)
    - `cd functions && npm install && cd .. && firebase deploy --only functions,firestore`
 6. **Maps** — Enable Maps SDK for Android & iOS; restrict the key; put it in `.env` + native secret files above.
 
 ```mermaid
 flowchart LR
-  A[Enable Auth + Firestore + Storage] --> B[Blaze + Functions]
-  B --> C[Set SMTP secrets]
-  C --> D[Deploy rules + functions]
+  A[Enable Email/Password + Google Auth] --> B[Firestore asia-south1]
+  B --> C[Deploy rules]
+  C --> D[Optional Blaze + Functions]
   D --> E[Restrict Maps + Firebase API keys]
   E --> F[flutter run with local .env]
 ```
@@ -509,9 +496,7 @@ flowchart LR
 |--------------------|---------|
 | `onOrderCreated` | Recompute subtotal from **live** product prices; recompute haversine delivery fee; correct totals; push seller |
 | `onOrderUpdated` | Notify the other party on status change |
-| `sendEmailOtp` / `verifyEmailOtp` | SMTP code + custom token minting |
-
-Region: **`asia-south1`**. Functions use the Admin SDK and bypass client security rules — intentional for fee integrity.
+Region: **`asia-south1`**. Functions use the Admin SDK and bypass client security rules — intentional for fee integrity. Auth does **not** use Functions (Email/Password + Google are client-side Firebase Auth).
 
 ```mermaid
 flowchart LR
@@ -563,16 +548,15 @@ flowchart TB
   end
 
   subgraph AuthUI
-    Login[Login sheet]
-    OTP[Email OTP]
+    Login[Email password sheet]
     Google[Google button]
-    Complete[Name + phone]
+    Complete[Name + mobile]
   end
 
   Home --> Cart --> Login
-  Login --> OTP
   Login --> Google
-  OTP --> Complete
+  Login --> Complete
+  Google --> Complete
   Profile --> SellerShell
 ```
 
@@ -617,7 +601,8 @@ Includes delivery-fee math and phone/email validation coverage. Prefer adding co
 | App crash on launch mentioning `.env` / `FIREBASE_*` | Missing or empty `.env` | Copy `.env.example` → `.env` and fill |
 | Blank / gray Google Map | Missing Maps key on native side | Set `MAPS_API_KEY` / `Secrets.plist` + restrict key correctly |
 | Google Sign-In fails (release) | SHA not in Firebase | Add release keystore SHA-1/256 |
-| Email OTP fails | SMTP secrets / Blaze / SA roles | Set secrets; Token Creator on compute SA |
+| Email/password rejects | Provider not enabled / weak password | Enable Email/Password in Firebase Auth; min 6 chars |
+| Google Sign-In missing OAuth client | `google-services.json` without oauth_client | Re-download config after enabling Google provider |
 | Order total “jumps” after place | Expected | Functions re-price from live catalogue |
 
 ---

@@ -13,10 +13,10 @@ class Constants {
   static const String deliveryLng = 'deliveryLng';
   static const String deliveryAddress = 'deliveryAddress';
 
-  // ── Auth ───────────────────────────────────────────────────────────────
+  // ── Cloud Functions region (order re-price / FCM) ───────────────────────
   static const String functionsRegion = 'asia-south1';
-  static const int otpLength = 6;
-  static const int otpResendSeconds = 60;
+
+  // Auth: Email/Password + Google (Firebase Auth). Profile: name + mobile only.
 
   // ── Business rules ─────────────────────────────────────────────────────
   static const double nearbyRadiusKm = 25;

@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -7,11 +6,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../constants.dart';
 import '../../models/app_user.dart';
 
-/// Sign-in via email one-time code (Cloud Functions) or Google, plus the `users/{uid}` doc.
+/// Email/password + Google Sign-In, plus the `users/{uid}` Firestore profile.
 class AuthRepo extends GetxService {
   final _auth = FirebaseAuth.instance;
   final _users = FirebaseFirestore.instance.collection(Constants.users);
-  final _functions = FirebaseFunctions.instanceFor(region: Constants.functionsRegion);
   final _google = GoogleSignIn.instance;
   Future<void>? _googleInit;
 
@@ -21,13 +19,13 @@ class AuthRepo extends GetxService {
   Stream<AppUser?> userStream(String uid) =>
       _users.doc(uid).snapshots().map((d) => d.exists ? AppUser.fromDoc(d) : null);
 
-  /// First sign-in: seed the doc from the auth account (Google gives a display name).
+  /// First sign-in: seed the doc from the auth account (Google may give a display name).
   Future<void> createUser(User user) => _users.doc(user.uid).set({
-    'email': user.email ?? '',
-    'name': user.displayName?.trim() ?? '',
-    'phone': '',
-    'createdAt': FieldValue.serverTimestamp(),
-  }, SetOptions(merge: true));
+        'email': user.email ?? '',
+        'name': user.displayName?.trim() ?? '',
+        'phone': '',
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
   Future<void> updateProfile(String uid, {required String name, required String phone}) =>
       _users.doc(uid).update({'name': name, 'phone': phone});
@@ -35,17 +33,12 @@ class AuthRepo extends GetxService {
   /// Server re-checks the account; throws if it was disabled or deleted.
   Future<void> reloadUser() async => _auth.currentUser?.reload();
 
-  Future<void> sendEmailCode(String email) =>
-      _functions.httpsCallable('sendEmailOtp').call<void>({'email': email});
+  Future<void> signInWithEmailPassword({required String email, required String password}) async {
+    await _auth.signInWithEmailAndPassword(email: email, password: password);
+  }
 
-  Future<void> verifyEmailCode(String email, String code) async {
-    final result = await _functions.httpsCallable('verifyEmailOtp').call<Map<String, dynamic>>({
-      'email': email,
-      'code': code,
-    });
-    final token = result.data['token'];
-    if (token is! String) throw FirebaseAuthException(code: 'invalid-custom-token');
-    await _auth.signInWithCustomToken(token);
+  Future<void> registerWithEmailPassword({required String email, required String password}) async {
+    await _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
 
   /// False when the user closed the Google account picker.
@@ -69,15 +62,23 @@ class AuthRepo extends GetxService {
     await _auth.signOut();
   }
 
-  /// Short, user-facing message for any auth / function error.
+  /// Short, user-facing message for any auth error.
   static String messageFor(Object e) => switch (e) {
-    FirebaseFunctionsException(:final message?) when message.isNotEmpty => message,
-    FirebaseAuthException(code: 'user-disabled') => 'This account has been disabled.',
-    FirebaseAuthException(code: 'network-request-failed') => 'No internet connection.',
-    FirebaseAuthException(code: 'account-exists-with-different-credential') =>
-      'This email is already linked to another sign-in method.',
-    FirebaseAuthException(:final message?) => message,
-    GoogleSignInException(:final description?) => 'Google sign-in failed: $description',
-    _ => 'Something went wrong. Please try again.',
-  };
+        FirebaseAuthException(code: 'user-disabled') => 'This account has been disabled.',
+        FirebaseAuthException(code: 'user-not-found') ||
+        FirebaseAuthException(code: 'wrong-password') ||
+        FirebaseAuthException(code: 'invalid-credential') =>
+          'Incorrect email or password.',
+        FirebaseAuthException(code: 'email-already-in-use') =>
+          'An account already exists with this email. Sign in instead.',
+        FirebaseAuthException(code: 'weak-password') => 'Password must be at least 6 characters.',
+        FirebaseAuthException(code: 'invalid-email') => 'Enter a valid email address.',
+        FirebaseAuthException(code: 'too-many-requests') => 'Too many attempts. Try again later.',
+        FirebaseAuthException(code: 'network-request-failed') => 'No internet connection.',
+        FirebaseAuthException(code: 'account-exists-with-different-credential') =>
+          'This email is already linked to another sign-in method.',
+        FirebaseAuthException(:final message?) when message.isNotEmpty => message,
+        GoogleSignInException(:final description?) => 'Google sign-in failed: $description',
+        _ => 'Something went wrong. Please try again.',
+      };
 }
