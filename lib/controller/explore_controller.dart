@@ -52,7 +52,6 @@ class ExploreController extends GetxController {
 
   /// Pin / card price label: delivery fee to the customer.
   String feeLabel(StoreModel s) {
-    if (!s.isOpen) return 'Closed';
     final here = location.geoPoint;
     final fee = here == null ? 0 : s.deliveryFeeTo(here);
     return fee == 0 ? 'Free' : rs(fee);

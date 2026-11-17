@@ -6,7 +6,6 @@ import '../../../controller/store_detail_controller.dart';
 import '../app_loader.dart';
 import '../empty_state.dart';
 import '../glass_nav/floating_glass_nav_bar.dart';
-import '../../../utils/helpers/formatters.dart';
 import 'store_listing_card.dart';
 
 /// Snapping list sheet: peek 0.08 · mid 0.50 · expanded up to the search panel (initial).
@@ -62,13 +61,13 @@ class ExploreSheet extends GetView<ExploreController> {
     final from = controller.location.geoPoint;
     final stores = home.visibleNearby;
     // Spinner only before the first data — background updates keep the list mounted.
-    if (home.stores.isLoading.value && home.stores.value.isEmpty) {
+    if (home.stores.isLoading.value && stores.isEmpty) {
       return const SliverToBoxAdapter(
         child: Padding(padding: EdgeInsets.all(32), child: AppLoader()),
       );
     }
     final error = home.stores.error.value;
-    if (error != null) {
+    if (error != null && stores.isEmpty) {
       return SliverToBoxAdapter(
         child: EmptyState(icon: Icons.error_outline, title: 'Could not load stores', subtitle: error),
       );
@@ -76,13 +75,11 @@ class ExploreSheet extends GetView<ExploreController> {
     // No results: ExploreNoShops is drawn centred on the screen, above the sheet.
     if (stores.isEmpty || from == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
     return SliverPadding(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, FloatingGlassNavBar.overlayOffset(context) + 16),
+      padding: EdgeInsets.fromLTRB(24, 8, 24, FloatingGlassNavBar.overlayOffset(context) + 16),
       sliver: SliverList.builder(
         itemCount: stores.length,
         itemBuilder: (_, i) => StoreListingCard(
           store: stores[i],
-          distance: km(stores[i].distanceTo(from)),
-          feeLabel: controller.feeLabel(stores[i]),
           onTap: () => StoreDetailController.open(stores[i].id),
         ),
       ),

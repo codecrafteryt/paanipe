@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/store.dart';
 import '../../../utils/values/my_color.dart';
-import 'store_listing_card.dart';
+import '../store_photo.dart';
 
 /// Compact card for the selected map pin: photo left, details right, close (X) on the photo.
 class SelectedStoreCard extends StatelessWidget {
@@ -67,14 +67,6 @@ class SelectedStoreCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      store.isOpen ? 'Open now' : 'Closed',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: store.isOpen ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(

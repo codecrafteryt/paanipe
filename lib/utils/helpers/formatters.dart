@@ -8,6 +8,20 @@ String km(double value) => value < 1 ? '${(value * 1000).round()} m' : '${value.
 
 String dateTime(DateTime? d) => d == null ? '' : DateFormat('d MMM, h:mm a').format(d);
 
+/// "House 12, Gulberg, Lahore" → "Lahore, Pakistan" (Pakistan-only app; addresses end with the city).
+String cityCountryOf(String address) {
+  final parts = address
+      .split(',')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty && double.tryParse(s) == null)
+      .toList();
+  if (parts.isEmpty) return 'Pakistan';
+  if (parts.last.toLowerCase() == 'pakistan') {
+    return parts.length == 1 ? parts.last : '${parts[parts.length - 2]}, ${parts.last}';
+  }
+  return '${parts.last}, Pakistan';
+}
+
 String feeText(int fee) => fee == 0 ? 'Free delivery' : '${rs(fee)} delivery';
 
 /// 1.0 → "1", 2.5 → "2.5"

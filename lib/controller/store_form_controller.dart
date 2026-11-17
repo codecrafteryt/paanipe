@@ -81,7 +81,6 @@ class StoreFormController extends GetxController {
           address: loc.address,
           freeWithinKm: double.parse(freeKmCtrl.text),
           chargePerKm: double.parse(perKmCtrl.text),
-          isOpen: existing?.isOpen ?? true,
         ),
         isNew: isNew,
       );

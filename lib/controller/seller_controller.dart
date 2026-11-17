@@ -40,7 +40,6 @@ class SellerController extends GetxController {
     ever(auth.state, bind);
   }
 
-  Future<void> setOpen(bool open) => _run(() => storeRepo.setOpen(store.value?.id ?? '', open));
 
   Future<void> setInStock(Product p, bool inStock) =>
       _run(() => storeRepo.setInStock(store.value?.id ?? '', p.id, inStock));

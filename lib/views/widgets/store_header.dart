@@ -45,16 +45,6 @@ class StoreHeader extends StatelessWidget {
           const Divider(height: 24),
           InfoRow(Icons.delivery_dining, store.feeRulesText),
           if (distanceText != null) InfoRow(Icons.near_me, distanceText!, bold: true),
-          if (!store.isOpen)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: InfoRow(
-                Icons.lock_clock,
-                'This store is closed right now.',
-                color: Color(0xFFDC2626),
-                bold: true,
-              ),
-            ),
         ],
       ),
     );

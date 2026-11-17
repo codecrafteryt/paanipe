@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../data/models/order.dart';
@@ -32,12 +33,22 @@ class CartController extends GetxController {
     store.value = s;
     final qty = items[p.id]?.qty ?? 0;
     if (qty >= _maxQty) return;
-    items[p.id] = OrderItem(productId: p.id, name: p.name, size: p.size, price: p.price, qty: qty + 1);
+    HapticFeedback.selectionClick();
+    items[p.id] = OrderItem(
+      productId: p.id,
+      name: p.name,
+      size: p.size,
+      price: p.price,
+      qty: qty + 1,
+      imageUrl: p.imageUrl,
+    );
   }
 
   void increment(String productId) {
     final item = items[productId];
-    if (item != null && item.qty < _maxQty) items[productId] = item.withQty(item.qty + 1);
+    if (item == null || item.qty >= _maxQty) return;
+    HapticFeedback.selectionClick();
+    items[productId] = item.withQty(item.qty + 1);
   }
 
   void decrement(String productId) {

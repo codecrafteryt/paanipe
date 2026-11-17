@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../controller/cart_controller.dart';
 import '../../controller/nav_controller.dart';
+import '../../utils/values/my_images.dart';
 import '../common/profile_tab.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/glass_nav/glass_nav_item.dart';
@@ -28,32 +29,23 @@ class CustomerShell extends GetView<NavController> {
       nav: controller,
       tabs: () => [
         (
-          item: const GlassNavItem(
-            label: 'Explore',
-            icon: Icons.explore_outlined,
-            selectedIcon: Icons.explore,
-          ),
+          item: const GlassNavItem(label: 'Explore', svg: MyImages.searchSvg),
           page: const HomeTab(),
         ),
         (
           item: GlassNavItem(
             label: 'Cart',
-            icon: Icons.shopping_cart_outlined,
-            selectedIcon: Icons.shopping_cart,
+            svg: MyImages.shoppingCartSvg,
             badgeCount: cartCtrl.count,
           ),
           page: const CartTab(),
         ),
         (
-          item: const GlassNavItem(
-            label: 'Orders',
-            icon: Icons.receipt_long_outlined,
-            selectedIcon: Icons.receipt_long,
-          ),
+          item: const GlassNavItem(label: 'Orders', svg: MyImages.tripsSvg),
           page: const CustomerOrdersTab(),
         ),
         (
-          item: const GlassNavItem(label: 'Profile', icon: Icons.person_outline, selectedIcon: Icons.person),
+          item: const GlassNavItem(label: 'Profile', svg: MyImages.profileSvg),
           page: const ProfileTab(),
         ),
       ],

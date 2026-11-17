@@ -32,15 +32,6 @@ class StoreSettingsTab extends GetView<SellerController> {
               onPressed: () => StoreFormController.open(store),
             ),
             const SizedBox(height: 12),
-            SectionCard(
-              padding: EdgeInsets.zero,
-              child: SwitchListTile(
-                title: const Text('Accepting orders'),
-                subtitle: Text(store.isOpen ? 'Customers can order now' : 'Store shows as closed'),
-                value: store.isOpen,
-                onChanged: controller.setOpen,
-              ),
-            ),
             SwitchModeCard(
               title: 'Switch to Customer',
               subtitle: 'Order water for yourself',

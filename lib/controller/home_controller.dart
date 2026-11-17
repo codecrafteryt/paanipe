@@ -6,6 +6,8 @@ import 'package:get/get.dart';
 import '../data/constants.dart';
 import '../data/models/store.dart';
 import '../data/repos/store_repo/store_repo.dart';
+import '../data/sample/sample_catalog.dart';
+import '../utils/helpers/formatters.dart';
 import '../utils/helpers/stream_state.dart';
 import 'auth_controller.dart';
 import 'location_controller.dart';
@@ -32,18 +34,15 @@ class HomeController extends GetxController {
     stores.bind(storeRepo.allStores());
   }
 
-  /// Stores near the search center (my own excluded): open first, then nearest.
+  /// Stores near the search center (my own excluded, demo stores included): nearest first.
   List<StoreModel> get nearby {
     final center = searchCenter.value ?? _location.geoPoint;
     if (center == null) return const [];
     final myId = Get.find<AuthController>().uid;
-    return stores.value
+    return [...stores.value, if (Constants.showSampleStores) ...SampleCatalog.around(center, area: cityCountryOf(_location.address))]
         .where((s) => s.id != myId && s.distanceTo(center) <= Constants.nearbyRadiusKm)
         .toList()
-      ..sort(
-        (a, b) =>
-            a.isOpen != b.isOpen ? (a.isOpen ? -1 : 1) : a.distanceTo(center).compareTo(b.distanceTo(center)),
-      );
+      ..sort((a, b) => a.distanceTo(center).compareTo(b.distanceTo(center)));
   }
 
   /// Current page of [nearby] for the list (markers use the full list).

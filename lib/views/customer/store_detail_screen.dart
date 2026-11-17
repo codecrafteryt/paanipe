@@ -3,58 +3,85 @@ import 'package:get/get.dart';
 
 import '../../controller/store_detail_controller.dart';
 import '../../data/models/product.dart';
-import '../../data/models/store.dart';
-import '../widgets/cart_bar.dart';
-import '../widgets/product_tile.dart';
-import '../widgets/qty_stepper.dart';
-import '../widgets/state_view.dart';
-import '../widgets/store_header.dart';
+import '../widgets/app_loader.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/store_detail/menu_item_tile.dart';
+import '../widgets/store_detail/store_cart_bar.dart';
+import '../widgets/store_detail/store_hero_bar.dart';
+import '../widgets/store_detail/store_intro.dart';
 
+/// Airbnb-style store page: hero photo → info → menu, with a reserve-style cart bar.
 class StoreDetailScreen extends GetView<StoreDetailController> {
   const StoreDetailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Obx(() => Text(controller.store.value?.name ?? ''))),
-      body: StateView<StoreModel?>(
-        state: controller.store,
-        isEmpty: (s) => s == null,
-        emptyIcon: Icons.storefront_outlined,
-        emptyTitle: 'Store not found',
-        builder: (store) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            StoreHeader(store: store!, distanceText: controller.distanceText),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('Products', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+      backgroundColor: Colors.white,
+      body: Obx(() {
+        final store = controller.store.value;
+        if (controller.store.isLoading.value) return const AppLoader();
+        if (store == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const EmptyState(icon: Icons.storefront_outlined, title: 'Store not found'),
+          );
+        }
+        return CustomScrollView(
+          controller: controller.scroll,
+          slivers: [
+            StoreHeroBar(
+              store: store,
+              height: StoreDetailController.heroHeight,
+              collapsed: controller.collapsed,
             ),
-            StateView<List<Product>>(
-              state: controller.products,
-              isEmpty: (p) => p.isEmpty,
-              emptyIcon: Icons.water_drop_outlined,
-              emptyTitle: 'No products yet',
-              builder: (products) => Column(
-                children: [
-                  for (final p in products)
-                    ProductTile(
-                      product: p,
-                      trailing: Obx(
-                        () => QtyStepper(
-                          qty: controller.qtyOf(p),
-                          onAdd: controller.canAdd(p) ? () => controller.add(p) : null,
-                          onRemove: () => controller.cart.decrement(p.id),
-                        ),
-                      ),
-                    ),
-                ],
+            SliverToBoxAdapter(
+              child: StoreIntro(store: store, deliveryText: controller.deliveryText),
+            ),
+            SliverToBoxAdapter(
+              key: controller.menuKey,
+              child: const Padding(
+                padding: EdgeInsets.fromLTRB(24, 0, 24, 4),
+                child: Text('Menu', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
               ),
             ),
+            _menu(),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
-        ),
-      ),
-      bottomNavigationBar: CartBar(storeId: controller.storeId),
+        );
+      }),
+      bottomNavigationBar: const StoreCartBar(),
     );
   }
+
+  Widget _menu() {
+    final products = controller.products;
+    if (products.isLoading.value) {
+      return const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(32), child: AppLoader()));
+    }
+    final list = products.value;
+    if (products.error.value != null || list.isEmpty) {
+      return SliverToBoxAdapter(
+        child: EmptyState(
+          icon: Icons.water_drop_outlined,
+          title: products.error.value == null ? 'No items yet' : 'Could not load the menu',
+          subtitle: products.error.value,
+        ),
+      );
+    }
+    return SliverList.separated(
+      itemCount: list.length,
+      separatorBuilder: (_, _) => const Divider(height: 1, indent: 24, endIndent: 24, color: Color(0xFFEBEBEB)),
+      itemBuilder: (_, i) => _item(list[i]),
+    );
+  }
+
+  Widget _item(Product p) => Obx(
+    () => MenuItemTile(
+      product: p,
+      qty: controller.qtyOf(p),
+      onAdd: controller.canAdd(p) ? () => controller.add(p) : null,
+      onRemove: () => controller.remove(p),
+    ),
+  );
 }

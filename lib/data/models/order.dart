@@ -12,6 +12,7 @@ class OrderItem {
     required this.size,
     required this.price,
     required this.qty,
+    this.imageUrl = '',
   });
 
   final String productId;
@@ -19,11 +20,13 @@ class OrderItem {
   final String size;
   final int price;
   final int qty;
+  final String imageUrl;
 
   int get lineTotal => price * qty;
   String get label => '$qty × $name${size.isEmpty ? '' : ' ($size)'}';
 
-  OrderItem withQty(int q) => OrderItem(productId: productId, name: name, size: size, price: price, qty: q);
+  OrderItem withQty(int q) =>
+      OrderItem(productId: productId, name: name, size: size, price: price, qty: q, imageUrl: imageUrl);
 
   factory OrderItem.fromMap(Map<String, dynamic> m) => OrderItem(
     productId: toStr(m['productId']),
@@ -31,6 +34,7 @@ class OrderItem {
     size: toStr(m['size']),
     price: toInt(m['price']),
     qty: toInt(m['qty'], 1),
+    imageUrl: toStr(m['imageUrl']),
   );
 
   Map<String, dynamic> toMap() => {
@@ -39,6 +43,7 @@ class OrderItem {
     'size': size,
     'price': price,
     'qty': qty,
+    'imageUrl': imageUrl,
   };
 }
 

@@ -15,7 +15,6 @@ class StoreModel {
     required this.address,
     required this.freeWithinKm,
     required this.chargePerKm,
-    this.isOpen = true,
   });
 
   /// Same as the owner's uid (one store per seller).
@@ -28,7 +27,9 @@ class StoreModel {
   final String address;
   final double freeWithinKm;
   final double chargePerKm;
-  final bool isOpen;
+
+  /// "Lahore, Pakistan".
+  String get cityCountry => cityCountryOf(address);
 
   double distanceTo(GeoPoint p) =>
       DeliveryFee.distanceKm(p.latitude, p.longitude, location.latitude, location.longitude);
@@ -52,7 +53,6 @@ class StoreModel {
       address: toStr(d['address']),
       freeWithinKm: toDouble(d['freeWithinKm']),
       chargePerKm: toDouble(d['chargePerKm']),
-      isOpen: d['isOpen'] != false,
     );
   }
 
@@ -67,6 +67,5 @@ class StoreModel {
     'address': address,
     'freeWithinKm': freeWithinKm,
     'chargePerKm': chargePerKm,
-    'isOpen': isOpen,
   };
 }

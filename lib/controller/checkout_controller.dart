@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../data/repos/order_repo/order_repo.dart';
+import '../data/sample/sample_catalog.dart';
 import '../utils/helpers/app_messages.dart';
 import '../views/customer/customer_shell.dart';
 import 'auth_controller.dart';
@@ -9,6 +10,7 @@ import 'cart_controller.dart';
 import 'location_controller.dart';
 import 'nav_controller.dart';
 import 'order_detail_controller.dart';
+import 'store_detail_controller.dart';
 
 /// Backs the Cart tab (cart review + checkout).
 class CheckoutController extends GetxController {
@@ -38,12 +40,25 @@ class CheckoutController extends GetxController {
 
   int get total => cart.subtotal + deliveryFee;
 
+  void exploreStores() => _nav.select(CustomerShell.explore);
+
+  void openStore() {
+    final id = cart.store.value?.id;
+    if (id != null) StoreDetailController.open(id);
+  }
+
+  Future<void> clearCart() async {
+    if (await confirmDialog('Clear cart?', 'All items will be removed.', ok: 'Clear')) cart.clear();
+  }
+
   Future<void> placeOrder() async {
     final store = cart.store.value;
     final here = location.location.value;
     if (store == null || cart.isEmpty) return;
     if (here == null) return showError('Set your delivery location first');
-    if (!store.isOpen) return showError('${store.name} is closed right now');
+    if (SampleCatalog.isSample(store.id)) {
+      return showError('${store.name} is a demo store. Ordering opens when real shops join.');
+    }
     if (!await _auth.requireLogin()) return;
     final user = _auth.profile.value;
     if (user == null) return;

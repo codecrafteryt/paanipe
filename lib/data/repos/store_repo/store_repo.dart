@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../constants.dart';
 import '../../models/product.dart';
 import '../../models/store.dart';
+import '../../sample/sample_catalog.dart';
 
 class StoreRepo extends GetxService {
   final _stores = FirebaseFirestore.instance.collection(Constants.stores);
@@ -17,8 +18,9 @@ class StoreRepo extends GetxService {
   Stream<List<StoreModel>> allStores() =>
       _stores.snapshots().map((s) => s.docs.map(StoreModel.fromDoc).toList());
 
-  Stream<StoreModel?> store(String id) =>
-      _stores.doc(id).snapshots().map((d) => d.exists ? StoreModel.fromDoc(d) : null);
+  Stream<StoreModel?> store(String id) => SampleCatalog.isSample(id)
+      ? Stream.value(SampleCatalog.store(id))
+      : _stores.doc(id).snapshots().map((d) => d.exists ? StoreModel.fromDoc(d) : null);
 
   Future<void> saveStore(StoreModel store, {required bool isNew}) => _stores.doc(store.id).set({
     ...store.toMap(),
@@ -26,10 +28,9 @@ class StoreRepo extends GetxService {
     if (isNew) 'createdAt': FieldValue.serverTimestamp(),
   }, SetOptions(merge: true));
 
-  Future<void> setOpen(String storeId, bool open) => _stores.doc(storeId).update({'isOpen': open});
-
-  Stream<List<Product>> products(String storeId) =>
-      _products(storeId).orderBy('createdAt').snapshots().map((s) => s.docs.map(Product.fromDoc).toList());
+  Stream<List<Product>> products(String storeId) => SampleCatalog.isSample(storeId)
+      ? Stream.value(SampleCatalog.products(storeId))
+      : _products(storeId).orderBy('createdAt').snapshots().map((s) => s.docs.map(Product.fromDoc).toList());
 
   Future<void> saveProduct(String storeId, Product p) => p.id.isEmpty
       ? _products(storeId).add({...p.toMap(), 'createdAt': FieldValue.serverTimestamp()})

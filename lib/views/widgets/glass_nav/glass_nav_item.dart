@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'glass_nav_tokens.dart';
 
@@ -7,16 +8,20 @@ import 'glass_nav_tokens.dart';
 class GlassNavItem {
   const GlassNavItem({
     required this.label,
-    required this.icon,
+    this.icon,
     IconData? selectedIcon,
+    this.svg,
     this.badgeCount = 0,
     this.avatarUrl,
   }) : selectedIcon = selectedIcon ?? icon;
 
   /// Used for tooltip / accessibility (the bar is icon-only).
   final String label;
-  final IconData icon;
-  final IconData selectedIcon;
+  final IconData? icon;
+  final IconData? selectedIcon;
+
+  /// SVG asset drawn instead of [icon] (tinted with the nav icon colour).
+  final String? svg;
   final int badgeCount;
 
   /// When set (e.g. profile tab), a circular photo replaces the icon.
@@ -34,7 +39,15 @@ class GlassNavGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = item.avatarUrl ?? '';
-    Widget glyph = url.isEmpty
+    final svg = item.svg;
+    Widget glyph = url.isEmpty && svg != null
+        ? SvgPicture.asset(
+            svg,
+            width: size,
+            height: size,
+            colorFilter: const ColorFilter.mode(GlassNavTokens.iconColor, BlendMode.srcIn),
+          )
+        : url.isEmpty
         ? Icon(selected ? item.selectedIcon : item.icon, size: size, color: GlassNavTokens.iconColor)
         : Container(
             padding: const EdgeInsets.all(1.5),

@@ -20,6 +20,9 @@ class Constants {
 
   // ── Business rules ─────────────────────────────────────────────────────
   static const double nearbyRadiusKm = 25;
+
+  /// Show demo stores (SampleCatalog) around the user. Turn off once real sellers join.
+  static const bool showSampleStores = true;
   static const String ordersChannelId = 'pannipe_orders';
 
   /// Lahore — map fallback when no location is known.

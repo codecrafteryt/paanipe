@@ -37,4 +37,8 @@ class Env {
   static String get firebaseIosApiKey => _req('FIREBASE_IOS_API_KEY');
   static String get firebaseIosAppId => _req('FIREBASE_IOS_APP_ID');
   static String get firebaseIosBundleId => _req('FIREBASE_IOS_BUNDLE_ID');
+
+  /// OAuth 2.0 **Web** client ID from Firebase / Google Cloud
+  /// (needed on Android for Google Sign-In `serverClientId`).
+  static String get googleWebClientId => _opt('GOOGLE_WEB_CLIENT_ID');
 }

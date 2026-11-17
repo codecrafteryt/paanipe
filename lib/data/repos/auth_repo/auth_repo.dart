@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../constants.dart';
 import '../../models/app_user.dart';
+import '../../../utils/values/env.dart';
 
 /// Email/password + Google Sign-In, plus the `users/{uid}` Firestore profile.
 class AuthRepo extends GetxService {
@@ -41,9 +42,23 @@ class AuthRepo extends GetxService {
     await _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
 
+  Future<void> _ensureGoogleInit() {
+    return _googleInit ??= () async {
+      final webClientId = Env.googleWebClientId;
+      if (webClientId.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'missing-web-client-id',
+          message:
+              'Add GOOGLE_WEB_CLIENT_ID to `.env` (Firebase → Authentication → Google → Web client ID).',
+        );
+      }
+      await _google.initialize(serverClientId: webClientId);
+    }();
+  }
+
   /// False when the user closed the Google account picker.
   Future<bool> signInWithGoogle() async {
-    await (_googleInit ??= _google.initialize());
+    await _ensureGoogleInit();
     try {
       final account = await _google.authenticate();
       final idToken = account.authentication.idToken;
@@ -63,22 +78,30 @@ class AuthRepo extends GetxService {
   }
 
   /// Short, user-facing message for any auth error.
-  static String messageFor(Object e) => switch (e) {
-        FirebaseAuthException(code: 'user-disabled') => 'This account has been disabled.',
-        FirebaseAuthException(code: 'user-not-found') ||
-        FirebaseAuthException(code: 'wrong-password') ||
-        FirebaseAuthException(code: 'invalid-credential') =>
-          'Incorrect email or password.',
-        FirebaseAuthException(code: 'email-already-in-use') =>
-          'An account already exists with this email. Sign in instead.',
-        FirebaseAuthException(code: 'weak-password') => 'Password must be at least 6 characters.',
-        FirebaseAuthException(code: 'invalid-email') => 'Enter a valid email address.',
-        FirebaseAuthException(code: 'too-many-requests') => 'Too many attempts. Try again later.',
-        FirebaseAuthException(code: 'network-request-failed') => 'No internet connection.',
-        FirebaseAuthException(code: 'account-exists-with-different-credential') =>
-          'This email is already linked to another sign-in method.',
-        FirebaseAuthException(:final message?) when message.isNotEmpty => message,
-        GoogleSignInException(:final description?) => 'Google sign-in failed: $description',
-        _ => 'Something went wrong. Please try again.',
-      };
+  static String messageFor(Object e) {
+    final raw = e.toString();
+    if (raw.contains('CONFIGURATION_NOT_FOUND')) {
+      return 'Firebase Auth is not set up yet. Open Firebase Console → Authentication → Get started.';
+    }
+    return switch (e) {
+      FirebaseAuthException(code: 'user-disabled') => 'This account has been disabled.',
+      FirebaseAuthException(code: 'user-not-found') ||
+      FirebaseAuthException(code: 'wrong-password') ||
+      FirebaseAuthException(code: 'invalid-credential') =>
+        'Incorrect email or password.',
+      FirebaseAuthException(code: 'email-already-in-use') =>
+        'An account already exists with this email. Sign in instead.',
+      FirebaseAuthException(code: 'weak-password') => 'Password must be at least 6 characters.',
+      FirebaseAuthException(code: 'invalid-email') => 'Enter a valid email address.',
+      FirebaseAuthException(code: 'too-many-requests') => 'Too many attempts. Try again later.',
+      FirebaseAuthException(code: 'network-request-failed') => 'No internet connection.',
+      FirebaseAuthException(code: 'account-exists-with-different-credential') =>
+        'This email is already linked to another sign-in method.',
+      FirebaseAuthException(code: 'missing-web-client-id') =>
+        'Google Sign-In is not configured. Add GOOGLE_WEB_CLIENT_ID to .env.',
+      FirebaseAuthException(:final message?) when message.isNotEmpty => message,
+      GoogleSignInException(:final description?) => 'Google sign-in failed: $description',
+      _ => 'Something went wrong. Please try again.',
+    };
+  }
 }
