@@ -42,6 +42,7 @@ class HomeTab extends GetView<ExploreController> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
       body: Obx(() {
         if (location.needsPermission.value) {
           return AllowLocationView(

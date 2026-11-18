@@ -9,7 +9,9 @@ import '../../../controller/location_controller.dart';
 import '../../../utils/values/my_color.dart';
 import '../../../utils/values/my_images.dart';
 
-const _shadow = [BoxShadow(color: Color(0x1F000000), blurRadius: 12, offset: Offset(0, 3))];
+const _shadow = [
+  BoxShadow(color: Color(0x1F000000), blurRadius: 12, offset: Offset(0, 3)),
+];
 
 /// Search pill (area title + detail line + chevron) and the round cart button.
 class ExploreSearchBar extends StatelessWidget {
@@ -38,7 +40,9 @@ class ExploreSearchBar extends StatelessWidget {
                   Expanded(
                     child: Obx(() {
                       final parts = location.address.split(',');
-                      final title = location.address.isEmpty ? 'Current location' : parts.first.trim();
+                      final title = location.address.isEmpty
+                          ? 'Current location'
+                          : parts.first.trim();
                       final detail = parts.length > 1
                           ? parts.skip(1).join(',').trim()
                           : 'Deliver now · Cash on delivery';
@@ -50,13 +54,19 @@ class ExploreSearchBar extends StatelessWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
                           ),
                           Text(
                             detail,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 11, color: MyColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: MyColors.textSecondary,
+                            ),
                           ),
                         ],
                       );
@@ -86,14 +96,22 @@ class _CartButton extends StatelessWidget {
       child: Container(
         width: 46,
         height: 46,
-        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: _shadow),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: _shadow,
+        ),
         alignment: Alignment.center,
         child: Obx(
           () => Badge(
             isLabelVisible: cart.count > 0,
             label: Text('${cart.count > 99 ? '99+' : cart.count}'),
             backgroundColor: const Color(0xFFEF4444),
-            child: SvgPicture.asset(MyImages.shoppingCartSvg, width: 24, height: 24),
+            child: SvgPicture.asset(
+              MyImages.shoppingCartSvg,
+              width: 24,
+              height: 24,
+            ),
           ),
         ),
       ),

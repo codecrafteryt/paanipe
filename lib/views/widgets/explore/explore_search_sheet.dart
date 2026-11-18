@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
 import '../../../controller/explore_search_controller.dart';
-import '../../../utils/values/my_color.dart';
+import '../../../utils/values/my_images.dart';
 import '../app_button.dart';
 import '../app_text_field.dart';
 
@@ -17,15 +18,12 @@ class ExploreSearchSheet extends GetView<ExploreSearchController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconButton(onPressed: Get.back, icon: const Icon(Icons.arrow_back_ios_new, size: 20)),
-              const Spacer(),
-              TextButton(
-                onPressed: controller.clear,
-                child: const Text('Clear', style: TextStyle(color: MyColors.brand)),
-              ),
-            ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              onPressed: Get.back,
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+            ),
           ),
           const SizedBox(height: 8),
           AppTextField(
@@ -33,26 +31,16 @@ class ExploreSearchSheet extends GetView<ExploreSearchController> {
             label: 'Where',
             hint: 'Area, street or landmark',
             emphasized: true,
-            autofocus: true,
             onSubmitted: (_) => controller.search(),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _OptionField(
-                  label: 'Location',
-                  value: 'Use my location',
-                  onTap: controller.useMyLocation,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _OptionField(label: 'Map', value: 'Pick on map', onTap: controller.pickOnMap),
-              ),
-            ],
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: SvgPicture.asset(MyImages.currentLocationSvg, width: 22, height: 22),
+            title: const Text('Current location', style: TextStyle(fontSize: 15)),
+            onTap: controller.useMyLocation,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Obx(
             () => AppButton(
               label: 'Search',
@@ -61,36 +49,6 @@ class ExploreSearchSheet extends GetView<ExploreSearchController> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Tap-only field in the same outlined-label style as the inputs.
-class _OptionField extends StatelessWidget {
-  const _OptionField({required this.label, required this.value, required this.onTap});
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: MyColors.subtleBorder),
-    );
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          enabledBorder: border,
-          border: border,
-        ),
-        child: Text(value, style: const TextStyle(color: MyColors.textSecondary)),
       ),
     );
   }

@@ -5,6 +5,7 @@ class MyImages {
   static const String shoppingCartSvg = 'assets/svgs/shopping_cart.svg';
   static const String googleSvg = 'assets/svgs/google_g.svg';
   static const String searchSvg = 'assets/svgs/search_svgs/search.svg';
+  static const String currentLocationSvg = 'assets/svgs/search_svgs/current_location_flat.svg';
   static const String tripsSvg = 'assets/svgs/nav/trips.svg';
   static const String profileSvg = 'assets/svgs/nav/profile.svg';
   static const String pinSvg = 'assets/svgs/store/pin.svg';

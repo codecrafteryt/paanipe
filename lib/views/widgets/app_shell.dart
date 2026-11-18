@@ -24,6 +24,7 @@ class AppShell extends StatelessWidget {
       final collapsible = nav.collapsibleIndex;
       return Scaffold(
         extendBody: true,
+        resizeToAvoidBottomInset: false,
         body: IndexedStack(
           index: nav.selected.value,
           children: [

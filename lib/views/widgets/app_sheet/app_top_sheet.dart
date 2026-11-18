@@ -27,32 +27,37 @@ class _TopSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: GestureDetector(
-        onVerticalDragEnd: (d) {
-          if ((d.primaryVelocity ?? 0) < -200) Navigator.of(context).pop();
-        },
-        child: Material(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-          clipBehavior: Clip.antiAlias,
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                child,
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 4, bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
+    // Keep the sheet pinned to the top; don't let keyboard insets shift the map UI under it.
+    final media = MediaQuery.of(context);
+    return MediaQuery(
+      data: media.copyWith(viewInsets: EdgeInsets.zero),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: GestureDetector(
+          onVerticalDragEnd: (d) {
+            if ((d.primaryVelocity ?? 0) < -200) Navigator.of(context).pop();
+          },
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  child,
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 4, bottom: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
